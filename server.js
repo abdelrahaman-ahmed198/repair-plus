@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 app.use(express.urlencoded({ extended: true }));
 
@@ -85,7 +85,7 @@ app.get('/', (req, res) => {
                     <div class="login-box">
                         <div class="form-header">
                             <h2>Restricted Sign In</h2>
-                           
+                            
                         </div>
                         ${errorMsg}
                         <form action="/dashboard" method="POST">
@@ -105,6 +105,11 @@ app.get('/', (req, res) => {
         </body>
         </html>
     `);
+});
+
+// Prevent "Cannot GET /dashboard" error by redirecting direct GET requests back to login
+app.get('/dashboard', (req, res) => {
+    res.redirect('/');
 });
 
 // 2. Restricted Authentication Route + Dashboard with Camera Scan Feature
@@ -443,5 +448,5 @@ app.post('/dashboard', (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log('REPAIR+ Secure Portal with Camera Scan is running at http://localhost:3000');
+    console.log('REPAIR+ Secure Portal is running on port ' + port);
 });
