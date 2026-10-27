@@ -85,7 +85,7 @@ app.get('/', (req, res) => {
                     <div class="login-box">
                         <div class="form-header">
                             <h2>Restricted Sign In</h2>
-                            <p>Enter authorized credentials (Hint: admin / repair123).</p>
+                           
                         </div>
                         ${errorMsg}
                         <form action="/dashboard" method="POST">
