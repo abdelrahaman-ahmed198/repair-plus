@@ -16,9 +16,9 @@ function findUser(username) {
 
 // 1. SIGN IN / LOGIN PAGE (GET /)
 app.get('/', (req, res) => {
-    const error = req.query.error === '1' ? '<div style="background: #ffeeee; color: #d93838; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px;">Invalid username or password. Please try again.</div>' : '';
-    const success = req.query.success === '1' ? '<div style="background: #eefee8; color: #27ae60; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px;">Account created successfully! Please sign in.</div>' : '';
-    const reset = req.query.reset === '1' ? '<div style="background: #eefee8; color: #27ae60; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px;">Password updated successfully! Sign in now.</div>' : '';
+    const error = req.query.error === '1' ? '<div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; font-weight: 500;">Invalid username or password. Please try again.</div>' : '';
+    const success = req.query.success === '1' ? '<div style="background: #d1fae5; color: #047857; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; font-weight: 500;">Account created successfully! Please sign in.</div>' : '';
+    const reset = req.query.reset === '1' ? '<div style="background: #d1fae5; color: #047857; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; font-weight: 500;">Password updated successfully! Sign in now.</div>' : '';
 
     res.send(`
         <!DOCTYPE html>
@@ -31,18 +31,17 @@ app.get('/', (req, res) => {
             <style>
                 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
                 body { background: #f8fafc; display: flex; height: 100vh; width: 100vw; align-items: center; justify-content: center; }
-                .wrapper { display: flex; width: 900px; max-width: 100%; background: #fff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #e2e8f0; }
+                .wrapper { display: flex; width: 900px; max-width: 90%; background: #fff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #e2e8f0; }
                 .left-side { flex: 1; background: linear-gradient(135deg, #0f3d37 0%, #1a5c53 100%); color: #fff; padding: 48px; display: flex; flex-direction: column; justify-content: space-between; }
                 .right-side { flex: 1; padding: 48px; display: flex; flex-direction: column; justify-content: center; }
                 .form-group { margin-bottom: 16px; }
                 .form-group label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; }
-                .form-group input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+                .form-group input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; }
                 .form-group input:focus { border-color: #0f3d37; }
-                .btn { width: 100%; padding: 12px; background: #0f3d37; color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; transition: background 0.2s; }
+                .btn { width: 100%; padding: 12px; background: #0f3d37; color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; }
                 .btn:hover { background: #164e47; }
                 .links { margin-top: 16px; display: flex; justify-content: space-between; font-size: 13px; }
                 .links a { color: #0f3d37; text-decoration: none; font-weight: 600; }
-                .links a:hover { text-decoration: underline; }
                 @media(max-width: 768px) { .left-side { display: none; } .wrapper { width: 100%; height: 100%; border-radius: 0; border: none; } }
             </style>
         </head>
@@ -51,9 +50,9 @@ app.get('/', (req, res) => {
                 <div class="left-side">
                     <div>
                         <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 12px;">REPAIR+</h1>
-                        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.5;">Advanced AI Diagnostics & Professional Device Solutions Portal.</p>
+                        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.5;">Professional Device Solutions & Manual Assessment Portal.</p>
                     </div>
-                    <p style="font-size: 12px; color: #94a3b8;">© 2026 REPAIR+ System. All rights reserved.</p>
+                    <p style="font-size: 12px; color: #94a3b8;">© 2026 REPAIR+ System.</p>
                 </div>
                 <div class="right-side">
                     <h2 style="font-size: 24px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">Welcome Back</h2>
@@ -83,7 +82,7 @@ app.get('/', (req, res) => {
 
 // 2. SIGN UP PAGE (GET /signup)
 app.get('/signup', (req, res) => {
-    const error = req.query.error === '1' ? '<div style="background: #ffeeee; color: #d93838; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px;">Username already exists. Choose another.</div>' : '';
+    const error = req.query.error === '1' ? '<div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; font-weight: 500;">Username already exists. Choose another.</div>' : '';
     res.send(`
         <!DOCTYPE html>
         <html lang="en">
@@ -140,7 +139,7 @@ app.post('/signup', (req, res) => {
 
 // 3. FORGOT PASSWORD (GET /forgot)
 app.get('/forgot', (req, res) => {
-    const error = req.query.error === '1' ? '<div style="background: #ffeeee; color: #d93838; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px;">Username not found in system records.</div>' : '';
+    const error = req.query.error === '1' ? '<div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; font-weight: 500;">Username not found in system records.</div>' : '';
     res.send(`
         <!DOCTYPE html>
         <html lang="en">
@@ -197,7 +196,7 @@ app.get('/dashboard', (req, res) => {
     res.redirect('/');
 });
 
-// 4. DASHBOARD (POST /dashboard)
+// 4. DASHBOARD (POST /dashboard) - Manual Control Center (No AI, Pure User Selection)
 app.post('/dashboard', (req, res) => {
     const { username, password } = req.body;
     const user = findUser(username);
@@ -216,40 +215,41 @@ app.post('/dashboard', (req, res) => {
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
             <style>
                 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-                body { background: #f8fafc; color: #1e293b; }
-                .navbar { background: #0f3d37; color: #fff; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
-                .main-container { max-width: 900px; margin: 40px auto; padding: 0 20px; }
-                .card { background: #fff; padding: 32px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-                .btn-ctrl { padding: 12px 24px; border-radius: 8px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; margin-right: 10px; transition: opacity 0.2s; }
+                body { background: #f8fafc; color: #1e293b; min-height: 100vh; display: flex; flex-direction: column; }
+                .navbar { background: #0f3d37; color: #fff; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; width: 100%; }
+                .main-container { max-width: 800px; width: 100%; margin: 40px auto; padding: 0 20px; flex: 1; }
+                .card { background: #fff; padding: 40px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); text-align: center; }
+                .btn-ctrl { padding: 14px 28px; border-radius: 8px; border: none; font-weight: 600; font-size: 15px; cursor: pointer; margin: 10px; transition: opacity 0.2s; display: inline-flex; align-items: center; gap: 8px; }
                 .btn-ctrl:hover { opacity: 0.9; }
                 .btn-repair { background: #10b981; color: #fff; }
                 .btn-buyback { background: #f97316; color: #fff; }
-                .panel-result { display: none; margin-top: 24px; padding: 20px; border-radius: 8px; }
+                .panel-result { display: none; margin-top: 30px; padding: 24px; border-radius: 8px; text-align: left; }
             </style>
         </head>
         <body>
             <div class="navbar">
-                <div style="font-weight: 700; font-size: 18px;">🛡️ REPAIR+ Pro Dashboard</div>
-                <div style="font-size: 14px;">Logged in as: <strong>${username}</strong> | <a href="/" style="color: #cbd5e1; text-decoration: none; margin-left: 10px;">Sign Out</a></div>
+                <div style="font-weight: 700; font-size: 18px;">🛡️ REPAIR+ Dashboard</div>
+                <div style="font-size: 14px;">User: <strong>${username}</strong> | <a href="/" style="color: #cbd5e1; text-decoration: none; margin-left: 10px;">Sign Out</a></div>
             </div>
+            
             <div class="main-container">
                 <div class="card">
-                    <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Diagnostic Control Center</h2>
-                    <p style="color: #64748b; font-size: 14px; margin-bottom: 24px;">Manually override or process device diagnostics status:</p>
+                    <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 8px; color: #0f172a;">Manual Device Assessment</h2>
+                    <p style="color: #64748b; font-size: 14px; margin-bottom: 30px;">Select the repair status for your item directly below:</p>
                     
-                    <div>
+                    <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
                         <button class="btn-ctrl btn-repair" onclick="setOutcome('repair')">✅ Set as Repairable</button>
                         <button class="btn-ctrl btn-buyback" onclick="setOutcome('buyback')">⚠️ Set as Unrepairable (Buyback)</button>
                     </div>
 
                     <div id="repairBox" class="panel-result" style="background: #ecfdf5; border: 1px solid #10b981; color: #065f46;">
-                        <h3 style="margin-bottom: 4px;">Status: Repairable Device</h3>
-                        <p style="font-size: 14px;">Feasibility Score: 95%. Standard component replacement recommended.</p>
+                        <h3 style="margin-bottom: 6px; font-size: 18px;">Status: Repairable Device</h3>
+                        <p style="font-size: 14px; line-height: 1.5;">This item has been manually marked as repairable. Proceeding with standard repair workflow and component servicing.</p>
                     </div>
 
                     <div id="buybackBox" class="panel-result" style="background: #fff7ed; border: 1px solid #f97316; color: #9a3412;">
-                        <h3 style="margin-bottom: 4px;">Status: Unrepairable (Buyback Offered)</h3>
-                        <p style="font-size: 14px;">Feasibility Score: 12%. Eligible for instant parts buyback program.</p>
+                        <h3 style="margin-bottom: 6px; font-size: 18px;">Status: Unrepairable (Buyback Offered)</h3>
+                        <p style="font-size: 14px; line-height: 1.5;">This item has been manually marked as unrepairable. Eligible for the instant parts buyback program.</p>
                     </div>
                 </div>
             </div>
