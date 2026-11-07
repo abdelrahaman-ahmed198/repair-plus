@@ -82,7 +82,7 @@ app.get('/', (req, res) => {
                             </div>
                         </div>
                     </div>
-                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v3.6</div>
+                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v3.5</div>
                 </div>
 
                 <div class="right-panel">
@@ -233,7 +233,7 @@ app.get('/dashboard', (req, res) => {
     res.redirect('/');
 });
 
-// 4. AUTHENTICATED DASHBOARD + CAMERA SCAN + CUSTOM QR CODE PANEL
+// 4. AUTHENTICATED DASHBOARD + CAMERA SCAN + QR CODE PANEL
 app.post('/dashboard', (req, res) => {
     const { username, password } = req.body;
     const user = findUser(username);
@@ -270,7 +270,7 @@ app.post('/dashboard', (req, res) => {
                 .section-header h2 { font-size: 24px; color: #0f3d37; margin-bottom: 8px; }
                 .section-header p { color: #64748b; font-size: 14px; }
 
-                /* Input Methods Grid (3 columns) */
+                /* Input Methods Grid (Now 3 columns including QR Scan Panel) */
                 .input-methods {
                     display: grid;
                     grid-template-columns: repeat(3, 1fr);
@@ -304,17 +304,11 @@ app.post('/dashboard', (req, res) => {
                 }
                 .qr-box {
                     background: #fff;
-                    padding: 12px;
+                    padding: 16px;
                     display: inline-block;
                     border-radius: 8px;
                     border: 1px solid #e2e8f0;
                     margin: 12px 0;
-                }
-                .qr-img {
-                    width: 150px;
-                    height: 150px;
-                    object-fit: contain;
-                    display: block;
                 }
 
                 /* Live Camera Scanner Viewport */
@@ -325,7 +319,7 @@ app.post('/dashboard', (req, res) => {
                 #videoFeed { width: 100%; max-height: 320px; object-fit: cover; }
                 .capture-bar { padding: 12px; background: rgba(0,0,0,0.8); display: flex; justify-content: center; gap: 12px; }
 
-                /* Image Preview Area */
+                /* Image Preview Container */
                 .preview-container { display: none; text-align: center; margin-bottom: 20px; }
                 .preview-img { max-width: 250px; max-height: 180px; border-radius: 8px; border: 2px solid #cbd5e1; object-fit: cover; margin-bottom: 12px; }
 
@@ -387,24 +381,35 @@ app.post('/dashboard', (req, res) => {
                             <input type="file" class="file-input" id="imageInput" accept="image/*" onchange="handleImageUpload(event)">
                         </label>
 
-                        <!-- QR Code Panel Option (Using your uploaded QR Code image) -->
+                        <!-- QR Code Panel Option -->
                         <div class="action-card" onclick="toggleQrPanel()">
                             <div class="action-icon">📱</div>
                             <div class="action-title">QR Code Panel</div>
-                            <div class="action-desc">Scan custom asset tag QR code</div>
+                            <div class="action-desc">Scan device QR code or view portal tag</div>
                         </div>
                     </div>
 
-                    <!-- QR Code Panel View with your exact QR Code -->
+                    <!-- QR Code Panel View -->
                     <div class="qr-modal" id="qrModal">
-                        <h3 style="color: #0f3d37; margin-bottom: 6px;">REPAIR+ Asset QR Code Panel</h3>
-                        <p style="font-size: 13px; color: #64748b;">Scan this code with a mobile scanner to link diagnostic info instantly.</p>
+                        <h3 style="color: #0f3d37; margin-bottom: 6px;">REPAIR+ Quick Asset QR Panel</h3>
+                        <p style="font-size: 13px; color: #64748b;">Scan this code with a mobile device to link asset diagnostics instantly.</p>
                         <div class="qr-box">
-                            <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=300&auto=format&fit=crop" style="display:none;" alt="Placeholder">
-                            <!-- Direct Data-URI representation of your uploaded QR code for lightning-fast cloud loading -->
-                            <img class="qr-img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPoAAAD6AQMAAACAhVqWAAAABlBMVEUAAAD///+l2Z/dAAAAAXRSTlMAQObYZgAAAFRJREFUeF7t0cENgEAQA7H3Y/sf1Ue42R0p8BgmHqgL1q765w1A55oD4wEAKfROn9R37+g7gQz6iP/9m487w+4b2+v2B6Cq/g+47B49AAAAAElFTkSuQmCC" alt="REPAIR+ QR Code" id="customQrImg">
+                            <!-- SVG Simple Simulated QR Code Pattern -->
+                            <svg width="140" height="140" viewBox="0 0 100 100" fill="#0f3d37">
+                                <rect x="5" y="5" width="30" height="30" fill="none" stroke="#0f3d37" stroke-width="6"/>
+                                <rect x="13" y="13" width="14" height="14"/>
+                                <rect x="65" y="5" width="30" height="30" fill="none" stroke="#0f3d37" stroke-width="6"/>
+                                <rect x="73" y="13" width="14" height="14"/>
+                                <rect x="5" y="65" width="30" height="30" fill="none" stroke="#0f3d37" stroke-width="6"/>
+                                <rect x="13" y="73" width="14" height="14"/>
+                                <rect x="42" y="42" width="16" height="16"/>
+                                <rect x="65" y="65" width="12" height="12"/>
+                                <rect x="80" y="80" width="12" height="12"/>
+                                <rect x="42" y="70" width="12" height="18"/>
+                                <rect x="70" y="42" width="18" height="12"/>
+                            </svg>
                         </div>
-                        <div style="margin-top: 8px;">
+                        <div>
                             <button onclick="toggleQrPanel()" style="font-size:12px; padding:6px 14px; cursor:pointer; background:#0f3d37; color:#fff; border:none; border-radius:6px; font-weight:600;">Close QR Panel</button>
                         </div>
                     </div>
@@ -461,14 +466,6 @@ app.post('/dashboard', (req, res) => {
             </div>
 
             <script>
-                // Fallback direct update to use the uploaded QR code image safely
-                document.addEventListener("DOMContentLoaded", function() {
-                    const qrImg = document.getElementById('customQrImg');
-                    if(qrImg) {
-                        qrImg.src = "https://images.unsplash.com/photo-1595078475328-1ab05d0a6a0e?q=80&w=300&auto=format&fit=crop"; // Secure hosted fallback matching QR structure
-                    }
-                });
-
                 let mediaStream = null;
 
                 function toggleQrPanel() {
