@@ -196,7 +196,7 @@ app.get('/dashboard', (req, res) => {
     res.redirect('/');
 });
 
-// 4. DASHBOARD (POST /dashboard) - Manual Control Center
+// 4. DASHBOARD (POST /dashboard) - Manual Control Center (No AI, Pure User Selection)
 app.post('/dashboard', (req, res) => {
     const { username, password } = req.body;
     const user = findUser(username);
