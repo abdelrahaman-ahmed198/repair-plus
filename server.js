@@ -5,7 +5,7 @@ const port = process.env.PORT || 3000;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// In-memory Database for Users & Orders with guaranteed permanent Admin account
+// In-memory Database for Users & Orders with permanent Admin account
 const users = [
     { username: "admin", email: "admin@repairplus.com", password: "repair123", isAdmin: true }
 ];
@@ -17,7 +17,7 @@ function findUser(username) {
     return users.find(u => u.username === username);
 }
 
-// 1. SIGN IN / LOGIN PAGE (GET /)
+// 1. SIGN IN / LOGIN PAGE (GET /) - Completely clean interface without hints
 app.get('/', (req, res) => {
     const errorMsg = req.query.error === '1' ? '<p style="color: #ef4444; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Invalid username or password. Please try again.</p>' : '';
     const successMsg = req.query.success === '1' ? '<p style="color: #10b981; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Account created successfully! Please sign in.</p>' : '';
@@ -81,18 +81,18 @@ app.get('/', (req, res) => {
                             </div>
                             <div>
                                 <div class="feature-title">Consistent AI</div>
-                                <div class="feature-desc">Reliable computer vision damage grading.</div>
+                                <div class="feature-desc">Reliable computer vision damage grading[cite: 3].</div>
                             </div>
                         </div>
                     </div>
-                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v4.7</div>
+                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v4.9</div>
                 </div>
 
                 <div class="right-panel">
                     <div class="login-box">
                         <div class="form-header">
                             <h2>Sign In to REPAIR+</h2>
-                            <p>Enter your credentials (Hint: admin / repair123).</p>
+                            <p>Enter your account credentials to continue.</p>
                         </div>
                         ${errorMsg} ${successMsg} ${resetMsg}
                         <form action="/dashboard" method="POST">
@@ -292,7 +292,6 @@ app.post('/submit-order', (req, res) => {
 app.post('/dashboard', (req, res) => {
     const { username, password } = req.body;
 
-    // Guaranteed Direct Admin Check so it never fails
     const isAdminUser = (username === "admin" && password === "repair123");
     const user = findUser(username);
 
