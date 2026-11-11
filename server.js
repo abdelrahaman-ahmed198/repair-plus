@@ -5,7 +5,6 @@ const port = process.env.PORT || 3000;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// In-memory Database for Users & Orders (Admin credentials hidden securely in backend)
 const users = [
     { username: "admin", email: "admin@repairplus.com", password: "repair123", isAdmin: true }
 ];
@@ -17,7 +16,6 @@ function findUser(username) {
     return users.find(u => u.username === username);
 }
 
-// 1. SIGN IN / LOGIN PAGE (GET /) - Clean interface without visible admin hints
 app.get('/', (req, res) => {
     const errorMsg = req.query.error === '1' ? '<p style="color: #ef4444; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Invalid username or password. Please try again.</p>' : '';
     const successMsg = req.query.success === '1' ? '<p style="color: #10b981; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Account created successfully! Please sign in.</p>' : '';
@@ -85,7 +83,7 @@ app.get('/', (req, res) => {
                             </div>
                         </div>
                     </div>
-                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v4.5</div>
+                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v4.6</div>
                 </div>
 
                 <div class="right-panel">
@@ -118,7 +116,6 @@ app.get('/', (req, res) => {
     `);
 });
 
-// 2. SIGN UP PAGE (GET /signup)
 app.get('/signup', (req, res) => {
     const errorMsg = req.query.error === '1' ? '<p style="color: #ef4444; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Username already exists. Choose another.</p>' : '';
     res.send(`
@@ -176,12 +173,11 @@ app.post('/signup', (req, res) => {
     res.redirect('/?success=1');
 });
 
-// 3. FORGOT PASSWORD (GET /forgot)
 app.get('/forgot', (req, res) => {
     const step = req.query.step || '1';
     const email = req.query.email || '';
     const errorMsg = req.query.error === '1' ? '<p style="color: #ef4444; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Invalid email or verification code.</p>' : '';
-    const infoMsg = req.query.sent === '1' ? `<div style="background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 15px;"><strong>Email Dispatched!</strong> Code sent to <b>${email}</b>.<br><span style="font-size:12px; color:#047857;">(Simulated Inbox Code: <b>4419</b>)</span></div>` : '';
+    const infoMsg = req.query.sent === '1' ? `<div style="background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 15px;"><strong>Email Dispatched!</strong> Code sent to <b>${email}</b>.<br><span style="font-size:12px; color:#047857;">(Simulated Inbox Code: <b>3322</b>)</span></div>` : '';
 
     let formContent = '';
     if (step === '1') {
@@ -205,7 +201,7 @@ app.get('/forgot', (req, res) => {
                 <input type="hidden" name="email" value="${email}">
                 <div class="form-group">
                     <label>Verification Code</label>
-                    <input type="text" name="code" placeholder="e.g. 4419" required>
+                    <input type="text" name="code" placeholder="e.g. 3322" required>
                 </div>
                 <div class="form-group">
                     <label>New Password</label>
@@ -252,7 +248,7 @@ app.post('/forgot/send', (req, res) => {
     if (!user) {
         return res.redirect('/forgot?step=1&error=1');
     }
-    resetCodes[email] = "4419";
+    resetCodes[email] = "3322";
     res.redirect(`/forgot?step=2&email=${encodeURIComponent(email)}&sent=1`);
 });
 
@@ -288,7 +284,6 @@ app.post('/submit-order', (req, res) => {
     res.send({ success: true });
 });
 
-// 4. AUTHENTICATED DASHBOARD (User Scanner OR Admin Orders Panel)
 app.post('/dashboard', (req, res) => {
     const { username, password } = req.body;
     const user = findUser(username);
@@ -617,13 +612,12 @@ app.post('/dashboard', (req, res) => {
                     document.getElementById('inputMethods').style.display = 'grid';
                 }
 
-                // Deterministic AI Evaluation based strictly on image content hash (Consistent result for the same image)
+                // Clean and safe deterministic evaluation (guaranteed execution without hanging)
                 function evaluateImageConsistency(dataUrl) {
                     let hash = 0;
-                    for (let i = 0; i < dataUrl.length; i += 40) {
-                        hash = (hash + dataUrl.charCodeAt(i)) % 100;
+                    for (let i = 0; i < dataUrl.length; i += 100) {
+                        hash = (hash + dataUrl.charCodeAt(i)) % 10;
                     }
-                    // Consistent rule: if hash is even, it's consistently repairable for this image
                     return hash % 2 === 0;
                 }
 
@@ -692,7 +686,6 @@ app.post('/dashboard', (req, res) => {
                     }, 500);
 
                     setTimeout(() => {
-                        clearInterval(statusIntent); // Clean timeout variable reference
                         clearInterval(statusInterval);
                         document.getElementById('aiLoading').style.display = 'none';
                         if (isRepairable) {
@@ -700,7 +693,7 @@ app.post('/dashboard', (req, res) => {
                         } else {
                             document.getElementById('unrepairableResult').style.display = 'block';
                         }
-                    }, 2200);
+                    }, 2000);
                 }
             </script>
         </body>
