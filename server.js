@@ -5,6 +5,7 @@ const port = process.env.PORT || 3000;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// In-memory Database for Users & Orders with guaranteed permanent Admin account
 const users = [
     { username: "admin", email: "admin@repairplus.com", password: "repair123", isAdmin: true }
 ];
@@ -16,6 +17,7 @@ function findUser(username) {
     return users.find(u => u.username === username);
 }
 
+// 1. SIGN IN / LOGIN PAGE (GET /)
 app.get('/', (req, res) => {
     const errorMsg = req.query.error === '1' ? '<p style="color: #ef4444; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Invalid username or password. Please try again.</p>' : '';
     const successMsg = req.query.success === '1' ? '<p style="color: #10b981; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Account created successfully! Please sign in.</p>' : '';
@@ -71,26 +73,26 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="left-content">
                         <h1 class="main-title">AI Camera Scan & Vision Agent</h1>
-                        <p class="sub-title">Advanced diagnostic portal featuring realistic damage assessment and secure user sessions.</p>
+                        <p class="sub-title">Advanced diagnostic portal featuring robust admin control and secure user sessions.</p>
                         <div class="features-grid">
                             <div>
-                                <div class="feature-title">Secure Portal</div>
-                                <div class="feature-desc">Encrypted authentication and authorized access control.</div>
+                                <div class="feature-title">Admin Dashboard</div>
+                                <div class="feature-desc">Dedicated panel to review incoming customer repair orders.</div>
                             </div>
                             <div>
-                                <div class="feature-title">AI Diagnostics</div>
-                                <div class="feature-desc">Consistent structural grading and repair assessment.</div>
+                                <div class="feature-title">Consistent AI</div>
+                                <div class="feature-desc">Reliable computer vision damage grading.</div>
                             </div>
                         </div>
                     </div>
-                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v4.6</div>
+                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v4.7</div>
                 </div>
 
                 <div class="right-panel">
                     <div class="login-box">
                         <div class="form-header">
                             <h2>Sign In to REPAIR+</h2>
-                            <p>Enter your account credentials to continue.</p>
+                            <p>Enter your credentials (Hint: admin / repair123).</p>
                         </div>
                         ${errorMsg} ${successMsg} ${resetMsg}
                         <form action="/dashboard" method="POST">
@@ -116,6 +118,7 @@ app.get('/', (req, res) => {
     `);
 });
 
+// 2. SIGN UP PAGE (GET /signup)
 app.get('/signup', (req, res) => {
     const errorMsg = req.query.error === '1' ? '<p style="color: #ef4444; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Username already exists. Choose another.</p>' : '';
     res.send(`
@@ -166,18 +169,19 @@ app.get('/signup', (req, res) => {
 
 app.post('/signup', (req, res) => {
     const { username, email, password } = req.body;
-    if (findUser(username)) {
+    if (findUser(username) || username === "admin") {
         return res.redirect('/signup?error=1');
     }
     users.push({ username, email, password, isAdmin: false });
     res.redirect('/?success=1');
 });
 
+// 3. FORGOT PASSWORD (GET /forgot)
 app.get('/forgot', (req, res) => {
     const step = req.query.step || '1';
     const email = req.query.email || '';
     const errorMsg = req.query.error === '1' ? '<p style="color: #ef4444; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Invalid email or verification code.</p>' : '';
-    const infoMsg = req.query.sent === '1' ? `<div style="background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 15px;"><strong>Email Dispatched!</strong> Code sent to <b>${email}</b>.<br><span style="font-size:12px; color:#047857;">(Simulated Inbox Code: <b>3322</b>)</span></div>` : '';
+    const infoMsg = req.query.sent === '1' ? `<div style="background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 15px;"><strong>Email Dispatched!</strong> Code sent to <b>${email}</b>.<br><span style="font-size:12px; color:#047857;">(Simulated Inbox Code: <b>1234</b>)</span></div>` : '';
 
     let formContent = '';
     if (step === '1') {
@@ -201,7 +205,7 @@ app.get('/forgot', (req, res) => {
                 <input type="hidden" name="email" value="${email}">
                 <div class="form-group">
                     <label>Verification Code</label>
-                    <input type="text" name="code" placeholder="e.g. 3322" required>
+                    <input type="text" name="code" placeholder="e.g. 1234" required>
                 </div>
                 <div class="form-group">
                     <label>New Password</label>
@@ -248,7 +252,7 @@ app.post('/forgot/send', (req, res) => {
     if (!user) {
         return res.redirect('/forgot?step=1&error=1');
     }
-    resetCodes[email] = "3322";
+    resetCodes[email] = "1234";
     res.redirect(`/forgot?step=2&email=${encodeURIComponent(email)}&sent=1`);
 });
 
@@ -284,15 +288,19 @@ app.post('/submit-order', (req, res) => {
     res.send({ success: true });
 });
 
+// 4. AUTHENTICATED DASHBOARD (Guaranteed Admin Login + User Scanner)
 app.post('/dashboard', (req, res) => {
     const { username, password } = req.body;
+
+    // Guaranteed Direct Admin Check so it never fails
+    const isAdminUser = (username === "admin" && password === "repair123");
     const user = findUser(username);
 
-    if (!user || user.password !== password) {
+    if (!isAdminUser && (!user || user.password !== password)) {
         return res.redirect('/?error=1');
     }
 
-    if (user.isAdmin || username === "admin") {
+    if (isAdminUser || (user && user.isAdmin)) {
         let ordersHtml = repairOrders.length === 0 ? '<p style="color: #64748b; text-align: center; padding: 20px;">No repair orders received yet.</p>' : '';
         repairOrders.slice().reverse().forEach(ord => {
             ordersHtml += `
@@ -612,7 +620,6 @@ app.post('/dashboard', (req, res) => {
                     document.getElementById('inputMethods').style.display = 'grid';
                 }
 
-                // Clean and safe deterministic evaluation (guaranteed execution without hanging)
                 function evaluateImageConsistency(dataUrl) {
                     let hash = 0;
                     for (let i = 0; i < dataUrl.length; i += 100) {
@@ -693,7 +700,7 @@ app.post('/dashboard', (req, res) => {
                         } else {
                             document.getElementById('unrepairableResult').style.display = 'block';
                         }
-                    }, 2000);
+                    }, 1800);
                 }
             </script>
         </body>
