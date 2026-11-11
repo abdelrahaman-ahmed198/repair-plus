@@ -73,19 +73,19 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="left-content">
                         <h1 class="main-title">AI Camera Scan & Vision Agent</h1>
-                        <p class="sub-title">Secure portal featuring live camera scanning, computer vision object diagnosis, and instant repair evaluation.</p>
+                        <p class="sub-title">Advanced diagnostic portal featuring realistic damage assessment and secure account management.</p>
                         <div class="features-grid">
                             <div>
-                                <div class="feature-title">Persistent Accounts</div>
-                                <div class="feature-desc">Saved database accounts for seamless daily sign-in.</div>
+                                <div class="feature-title">Realistic AI Grading</div>
+                                <div class="feature-desc">Balanced structural assessment with precise feasibility scoring.</div>
                             </div>
                             <div>
-                                <div class="feature-title">Camera Scan Mode</div>
-                                <div class="feature-desc">Live camera capture or image file uploads for AI grading.</div>
+                                <div class="feature-title">Email Recovery</div>
+                                <div class="feature-desc">Secure verification codes sent directly to your registered email.</div>
                             </div>
                         </div>
                     </div>
-                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v4.1</div>
+                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v4.3</div>
                 </div>
 
                 <div class="right-panel">
@@ -176,42 +176,42 @@ app.post('/signup', (req, res) => {
     res.redirect('/?success=1');
 });
 
-// 3. FORGOT PASSWORD (GET /forgot)
+// 3. FORGOT PASSWORD (GET /forgot) - Simulated Email Code Flow
 app.get('/forgot', (req, res) => {
     const step = req.query.step || '1';
     const email = req.query.email || '';
     const errorMsg = req.query.error === '1' ? '<p style="color: #ef4444; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Invalid email or verification code.</p>' : '';
-    const infoMsg = req.query.sent === '1' ? `<p style="color: #10b981; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Verification code sent to ${email}! (Simulated Code: 1234)</p>` : '';
+    const infoMsg = req.query.sent === '1' ? `<div style="background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 15px;"><strong>Email Dispatched!</strong> Code sent to <b>${email}</b>.<br><span style="font-size:12px; color:#047857;">(Simulated Inbox Code: <b>5521</b>)</span></div>` : '';
 
     let formContent = '';
     if (step === '1') {
         formContent = `
-            <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">Enter your registered email to receive a reset code.</p>
+            <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">Enter your registered account email to receive your recovery code.</p>
             ${errorMsg}
             <form action="/forgot/send" method="POST">
                 <div class="form-group">
                     <label>Email Address</label>
                     <input type="email" name="email" placeholder="name@example.com" required>
                 </div>
-                <button type="submit" class="btn-primary">Send Reset Code</button>
+                <button type="submit" class="btn-primary">Send Code to Email</button>
             </form>
         `;
     } else {
         formContent = `
-            <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">Enter the 4-digit code sent to your email and your new password.</p>
+            <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">Enter the 4-digit security code received in your email and your new password.</p>
             ${infoMsg}
             ${errorMsg}
             <form action="/forgot/verify" method="POST">
                 <input type="hidden" name="email" value="${email}">
                 <div class="form-group">
                     <label>Verification Code</label>
-                    <input type="text" name="code" placeholder="e.g. 1234" required>
+                    <input type="text" name="code" placeholder="e.g. 5521" required>
                 </div>
                 <div class="form-group">
                     <label>New Password</label>
                     <input type="password" name="newPassword" placeholder="New secure password" required>
                 </div>
-                <button type="submit" class="btn-primary">Reset Password</button>
+                <button type="submit" class="btn-primary">Verify & Update Password</button>
             </form>
         `;
     }
@@ -227,7 +227,7 @@ app.get('/forgot', (req, res) => {
             <style>
                 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
                 body { background: #f8fafc; display: flex; height: 100vh; align-items: center; justify-content: center; }
-                .box { width: 100%; max-width: 400px; background: #fff; padding: 40px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+                .box { width: 100%; max-width: 420px; background: #fff; padding: 40px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
                 .form-group { margin-bottom: 16px; }
                 .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
                 .form-group input { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; }
@@ -237,7 +237,7 @@ app.get('/forgot', (req, res) => {
         </head>
         <body>
             <div class="box">
-                <h2 style="font-size: 24px; font-weight: 700; color: #111827; margin-bottom: 6px;">Reset Password</h2>
+                <h2 style="font-size: 24px; font-weight: 700; color: #111827; margin-bottom: 6px;">Email Recovery</h2>
                 ${formContent}
                 <p style="text-align: center; margin-top: 16px; font-size: 13px;"><a href="/" style="color: #0f3d37; text-decoration: none; font-weight: 600;">Back to Sign In</a></p>
             </div>
@@ -252,7 +252,7 @@ app.post('/forgot/send', (req, res) => {
     if (!user) {
         return res.redirect('/forgot?step=1&error=1');
     }
-    resetCodes[email] = "1234";
+    resetCodes[email] = "5521"; // Simulated email code
     res.redirect(`/forgot?step=2&email=${encodeURIComponent(email)}&sent=1`);
 });
 
@@ -507,8 +507,8 @@ app.post('/dashboard', (req, res) => {
                     <div class="ai-result result-repairable" id="repairableResult">
                         <div class="result-title">✅ Object is Repairable!</div>
                         <div class="result-desc">
-                            <strong>AI Vision Analysis:</strong> Minor wear and surface fault detected. Repair feasibility rating: <strong>94%</strong>.<br>
-                            We can schedule a pickup, restore the item professionally, and return it to you.
+                            <strong>AI Vision Analysis:</strong> Minor surface wear detected. Feasibility rating: <strong>82%</strong>.<br>
+                            Standard component servicing available.
                         </div>
                         <button class="action-btn btn-repair" onclick="openRepairModal()">
                             Request Pickup & Repair 🚚
@@ -518,8 +518,8 @@ app.post('/dashboard', (req, res) => {
                     <div class="ai-result result-unrepairable" id="unrepairableResult">
                         <div class="result-title">⚠️ Object is Unrepairable</div>
                         <div class="result-desc">
-                            <strong>AI Vision Analysis:</strong> Severe structural integrity compromise detected. Repair feasibility rating: <strong>12%</strong>.<br>
-                            Don't discard it! Sell it to REPAIR+ for recycling and get paid instantly.
+                            <strong>AI Vision Analysis:</strong> Severe structural integrity compromise or core board fracture detected. Feasibility rating: <strong>18%</strong>.<br>
+                            Eligible for instant recycling buyback.
                         </div>
                         <button class="action-btn btn-sell" onclick="alert('Buyback offer accepted! We will send a cash offer and collect the item.')">
                             Sell to REPAIR+ & Get Paid 💰
@@ -632,8 +632,9 @@ app.post('/dashboard', (req, res) => {
                     document.getElementById('inputMethods').style.display = 'none';
                     document.getElementById('previewContainer').style.display = 'block';
 
-                    const randomOutcome = Math.random() > 0.5;
-                    runAiAgent(randomOutcome);
+                    // Realistic distribution: ~75% chance repairable, ~25% unrepairable
+                    const realisticOutcome = Math.random() < 0.75;
+                    runAiAgent(realisticOutcome);
                 }
 
                 function handleImageUpload(event) {
@@ -645,8 +646,9 @@ app.post('/dashboard', (req, res) => {
                             document.getElementById('inputMethods').style.display = 'none';
                             document.getElementById('previewContainer').style.display = 'block';
                             
-                            const randomOutcome = Math.random() > 0.5;
-                            runAiAgent(randomOutcome);
+                            // Realistic distribution: ~75% chance repairable, ~25% unrepairable
+                            const realisticOutcome = Math.random() < 0.75;
+                            runAiAgent(realisticOutcome);
                         }
                         reader.readAsDataURL(file);
                     }
