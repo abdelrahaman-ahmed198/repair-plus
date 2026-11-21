@@ -1,13 +1,4 @@
-# Let's inspect the provided code and check what features were requested across the conversation history or in the current file.
-# The user wants to add the features we discussed earlier to the provided file:
-# 1. Payment methods (Visa / Vodafone Cash) with real interactive processing instead of just clicking "activate".
-# 2. Repair cost quotation workflow (admin inputs repair cost for repair orders, user views and accepts/declines).
-# 3. Ensuring all buttons, upload triggers, and modals are fully functional and error-free.
-
-# Let's write out the complete, updated server.js code using python to generate it as a downloadable file, or we can provide it as text / generate document. Since it's a JS file, the system prompt says:
-# "For code files (e.g., JS, PY, C++, Java, HTML) — call google:ds_python_interpreter. NEVER use file_gen:generate_document for code or data files"
-
-code_content = '''const express = require('express');
+const express = require('express');
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -885,8 +876,8 @@ app.post('/dashboard', (req, res) => {
                             let repairButtons = '';
                             if (r.adminCost && r.status.indexOf('Quote Sent') !== -1) {
                                 repairButtons = '<div style="margin-top:8px; display:flex; gap:8px;">' +
-                                    '<button type="button" onclick="respondRepair(' + r.id + ', \\'accept\\')" style="padding:5px 12px; background:#10b981; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Accept Quote ✓</button>' +
-                                    '<button type="button" onclick="respondRepair(' + r.id + ', \\'decline\\')" style="padding:5px 12px; background:#ef4444; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Decline ✕</button>' +
+                                    '<button type="button" onclick="respondRepair(' + r.id + ', \'accept\')" style="padding:5px 12px; background:#10b981; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Accept Quote ✓</button>' +
+                                    '<button type="button" onclick="respondRepair(' + r.id + ', \'decline\')" style="padding:5px 12px; background:#ef4444; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Decline ✕</button>' +
                                 '</div>';
                             }
                             html += '<div style="background: #ecfdf5; border: 1px solid #10b981; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; gap: 12px; align-items: center;">' +
@@ -904,8 +895,8 @@ app.post('/dashboard', (req, res) => {
                             let actionButtons = '';
                             if (b.adminOffer && b.status.indexOf('Offer Sent') !== -1) {
                                 actionButtons = '<div style="margin-top:8px; display:flex; gap:8px;">' +
-                                    '<button type="button" onclick="respondToOffer(' + b.id + ', \\'accept\\')" style="padding:5px 12px; background:#10b981; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Accept Offer ✓</button>' +
-                                    '<button type="button" onclick="respondToOffer(' + b.id + ', \\'decline\\')" style="padding:5px 12px; background:#ef4444; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Decline ✕</button>' +
+                                    '<button type="button" onclick="respondToOffer(' + b.id + ', \'accept\')" style="padding:5px 12px; background:#10b981; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Accept Offer ✓</button>' +
+                                    '<button type="button" onclick="respondToOffer(' + b.id + ', \'decline\')" style="padding:5px 12px; background:#ef4444; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Decline ✕</button>' +
                                 '</div>';
                             }
                             html += '<div style="background: #fff7ed; border: 1px solid #f97316; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; gap: 12px; align-items: center;">' +
@@ -1094,12 +1085,11 @@ app.post('/dashboard', (req, res) => {
     `);
 });
 
-app.listen(port, () => {
-    console.log('REPAIR+ Portal v12.5 running at http://localhost:' + port);
-});
-'''
+if (process.env.NODE_ENV !== 'production') {
+    const port = process.env.PORT || 3000;
+    app.listen(port, () => {
+        console.log('REPAIR+ Portal running at http://localhost:' + port);
+    });
+}
 
-with open("server.js", "w", encoding="utf-8") as f:
-    f.write(code_content)
-
-print("server.js generated successfully!")
+module.exports = app;
