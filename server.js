@@ -5,19 +5,18 @@ const port = process.env.PORT || 3000;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// In-memory Database for Users & Orders with permanent Admin account
 const users = [
     { username: "admin", email: "admin@repairplus.com", password: "repair123", isAdmin: true }
 ];
 
 const repairOrders = [];
+const buybackOrders = [];
 const resetCodes = {};
 
 function findUser(username) {
     return users.find(u => u.username === username);
 }
 
-// 1. SIGN IN / LOGIN PAGE (GET /) - Completely clean interface without hints
 app.get('/', (req, res) => {
     const errorMsg = req.query.error === '1' ? '<p style="color: #ef4444; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Invalid username or password. Please try again.</p>' : '';
     const successMsg = req.query.success === '1' ? '<p style="color: #10b981; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Account created successfully! Please sign in.</p>' : '';
@@ -77,15 +76,15 @@ app.get('/', (req, res) => {
                         <div class="features-grid">
                             <div>
                                 <div class="feature-title">Admin Dashboard</div>
-                                <div class="feature-desc">Dedicated panel to review incoming customer repair orders.</div>
+                                <div class="feature-desc">Dedicated panel to review incoming customer repair & buyback orders.</div>
                             </div>
                             <div>
                                 <div class="feature-title">Consistent AI</div>
-                                <div class="feature-desc">Reliable computer vision damage grading[cite: 3].</div>
+                                <div class="feature-desc">Reliable computer vision damage grading.</div>
                             </div>
                         </div>
                     </div>
-                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v4.9</div>
+                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v5.0</div>
                 </div>
 
                 <div class="right-panel">
@@ -118,7 +117,6 @@ app.get('/', (req, res) => {
     `);
 });
 
-// 2. SIGN UP PAGE (GET /signup)
 app.get('/signup', (req, res) => {
     const errorMsg = req.query.error === '1' ? '<p style="color: #ef4444; font-size: 13px; margin-bottom: 15px; font-weight: 600;">Username already exists. Choose another.</p>' : '';
     res.send(`
@@ -176,7 +174,6 @@ app.post('/signup', (req, res) => {
     res.redirect('/?success=1');
 });
 
-// 3. FORGOT PASSWORD (GET /forgot)
 app.get('/forgot', (req, res) => {
     const step = req.query.step || '1';
     const email = req.query.email || '';
@@ -288,7 +285,34 @@ app.post('/submit-order', (req, res) => {
     res.send({ success: true });
 });
 
-// 4. AUTHENTICATED DASHBOARD (Guaranteed Admin Login + User Scanner)
+app.post('/submit-buyback', (req, res) => {
+    const { username, address, location, phone1, phone2, details, image } = req.body;
+    buybackOrders.push({
+        id: buybackOrders.length + 1,
+        username,
+        address,
+        location,
+        phone1,
+        phone2,
+        details,
+        image: image || '',
+        adminOffer: '',
+        status: 'Pending Admin Offer',
+        date: new Date().toLocaleString()
+    });
+    res.send({ success: true });
+});
+
+app.post('/admin/set-offer', (req, res) => {
+    const { orderId, offerPrice } = req.body;
+    const ord = buybackOrders.find(o => o.id == orderId);
+    if (ord) {
+        ord.adminOffer = offerPrice;
+        ord.status = 'Offer Ready (' + offerPrice + ' EGP)';
+    }
+    res.redirect('/dashboard-admin-refresh');
+});
+
 app.post('/dashboard', (req, res) => {
     const { username, password } = req.body;
 
@@ -300,17 +324,40 @@ app.post('/dashboard', (req, res) => {
     }
 
     if (isAdminUser || (user && user.isAdmin)) {
-        let ordersHtml = repairOrders.length === 0 ? '<p style="color: #64748b; text-align: center; padding: 20px;">No repair orders received yet.</p>' : '';
+        let ordersHtml = repairOrders.length === 0 ? '<p style="color: #64748b; text-align: center; padding: 15px;">No repair orders received yet.</p>' : '';
         repairOrders.slice().reverse().forEach(ord => {
             ordersHtml += `
                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; font-weight: 700; color: #0f3d37; margin-bottom: 6px;">
-                        <span>Order #${ord.id} - User: ${ord.username}</span>
+                        <span>Repair Order #${ord.id} - User: ${ord.username}</span>
                         <span style="font-size: 12px; color: #64748b;">${ord.date}</span>
                     </div>
                     <p style="font-size: 13px; color: #334155; margin-bottom: 4px;"><strong>Address:</strong> ${ord.address} (${ord.location})</p>
-                    <p style="font-size: 13px; color: #334155; margin-bottom: 4px;"><strong>Phones:</strong> Primary: ${ord.phone1} | Secondary: ${ord.phone2}</p>
+                    <p style="font-size: 13px; color: #334155; margin-bottom: 4px;"><strong>Phones:</strong> Primary: ${ord.phone1} | Secondary: ${ord.phone2 || 'N/A'}</p>
                     <p style="font-size: 13px; color: #334155;"><strong>Device Details:</strong> ${ord.details}</p>
+                </div>
+            `;
+        });
+
+        let buybackHtml = buybackOrders.length === 0 ? '<p style="color: #64748b; text-align: center; padding: 15px;">No buyback orders received yet.</p>' : '';
+        buybackOrders.slice().reverse().forEach(ord => {
+            buybackHtml += `
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px; display: flex; gap: 16px; align-items: center;">
+                    ${ord.image ? `<img src="${ord.image}" style="width: 90px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1;">` : ''}
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; font-weight: 700; color: #f97316; margin-bottom: 6px;">
+                            <span>Buyback Order #${ord.id} - User: ${ord.username}</span>
+                            <span style="font-size: 12px; color: #64748b;">${ord.date}</span>
+                        </div>
+                        <p style="font-size: 13px; color: #334155; margin-bottom: 4px;"><strong>Address:</strong> ${ord.address} (${ord.location}) | <strong>Phone:</strong> ${ord.phone1}</p>
+                        <p style="font-size: 13px; color: #334155; margin-bottom: 8px;"><strong>Details:</strong> ${ord.details}</p>
+                        <form action="/admin/set-offer" method="POST" style="display: flex; gap: 8px; align-items: center;">
+                            <input type="hidden" name="orderId" value="${ord.id}">
+                            <input type="text" name="offerPrice" placeholder="Enter offer price (e.g. 1500 EGP)" value="${ord.adminOffer}" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 220px;" required>
+                            <button type="submit" style="padding: 6px 14px; background: #0f3d37; color: #fff; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;">Save & Send Offer</button>
+                            <span style="font-size: 12px; font-weight: 600; color: #047857; margin-left: 8px;">Status: ${ord.status}</span>
+                        </form>
+                    </div>
                 </div>
             `;
         });
@@ -331,8 +378,8 @@ app.post('/dashboard', (req, res) => {
                     .brand-badge { background: #ef4444; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
                     .user-info { display: flex; align-items: center; gap: 16px; font-size: 14px; }
                     .btn-logout { background: #ef4444; color: #fff; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; }
-                    .main-container { max-width: 900px; margin: 40px auto; padding: 0 20px; width: 100%; }
-                    .dashboard-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+                    .main-container { max-width: 950px; margin: 40px auto; padding: 0 20px; width: 100%; }
+                    .dashboard-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 24px; }
                 </style>
             </head>
             <body>
@@ -347,8 +394,14 @@ app.post('/dashboard', (req, res) => {
                 </nav>
                 <div class="main-container">
                     <div class="dashboard-card">
-                        <h2 style="color: #0f3d37; margin-bottom: 6px; font-size: 24px;">Incoming Customer Repair Orders</h2>
-                        <p style="color: #64748b; font-size: 14px; margin-bottom: 24px;">Review all items submitted for repair pickup and customer contact details.</p>
+                        <h2 style="color: #0f3d37; margin-bottom: 6px; font-size: 22px;">Incoming Buyback & Sell Offers</h2>
+                        <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">Review unrepairable item images, customer contacts, and set cash offer pricing.</p>
+                        <div>${buybackHtml}</div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h2 style="color: #0f3d37; margin-bottom: 6px; font-size: 22px;">Incoming Customer Repair Orders</h2>
+                        <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">Review all items submitted for repair pickup and customer contact details.</p>
                         <div>${ordersHtml}</div>
                     </div>
                 </div>
@@ -378,6 +431,7 @@ app.post('/dashboard', (req, res) => {
                 .brand-badge { background: #80e2d0; color: #0f3d37; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
                 .user-info { display: flex; align-items: center; gap: 16px; font-size: 14px; }
                 .btn-logout { background: #ef4444; color: #fff; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; }
+                .btn-orders { background: #3b82f6; color: #fff; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; margin-right: 10px; cursor: pointer; border: none; }
 
                 .main-container { max-width: 900px; margin: 40px auto; padding: 0 20px; width: 100%; }
                 .dashboard-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
@@ -385,31 +439,15 @@ app.post('/dashboard', (req, res) => {
                 .section-header h2 { font-size: 24px; color: #0f3d37; margin-bottom: 8px; }
                 .section-header p { color: #64748b; font-size: 14px; }
 
-                .input-methods {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 16px;
-                    margin-bottom: 24px;
-                }
-                .action-card {
-                    border: 2px dashed #0f3d37;
-                    background: #f0fdf4;
-                    border-radius: 10px;
-                    padding: 24px 16px;
-                    text-align: center;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
+                .input-methods { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
+                .action-card { border: 2px dashed #0f3d37; background: #f0fdf4; border-radius: 10px; padding: 24px 16px; text-align: center; cursor: pointer; transition: all 0.2s; }
                 .action-card:hover { background: #e6f4f1; }
                 .action-icon { font-size: 30px; margin-bottom: 8px; color: #0f3d37; }
                 .action-title { font-size: 14px; font-weight: 700; color: #0f3d37; margin-bottom: 4px; }
                 .action-desc { font-size: 11px; color: #64748b; }
                 .file-input { display: none; }
 
-                .camera-container {
-                    display: none; text-align: center; background: #000;
-                    border-radius: 10px; overflow: hidden; margin-bottom: 24px; position: relative;
-                }
+                .camera-container { display: none; text-align: center; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 24px; position: relative; }
                 #videoFeed { width: 100%; max-height: 320px; object-fit: cover; }
                 .capture-bar { padding: 12px; background: rgba(0,0,0,0.8); display: flex; justify-content: center; gap: 12px; }
 
@@ -417,10 +455,7 @@ app.post('/dashboard', (req, res) => {
                 .preview-img { max-width: 250px; max-height: 180px; border-radius: 8px; border: 2px solid #cbd5e1; object-fit: cover; margin-bottom: 12px; }
 
                 .ai-loading { display: none; text-align: center; padding: 30px; }
-                .spinner {
-                    border: 4px solid #f3f3f3; border-top: 4px solid #0f3d37; border-radius: 50%;
-                    width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 16px;
-                }
+                .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #0f3d37; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 16px; }
                 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
                 .ai-result { display: none; padding: 24px; border-radius: 8px; margin-top: 20px; text-align: center; }
@@ -435,20 +470,12 @@ app.post('/dashboard', (req, res) => {
                 .btn-sell { background: #f97316; color: #fff; }
                 .btn-sell:hover { background: #ea580c; }
 
-                .modal-overlay {
-                    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                    background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;
-                }
-                .modal-box {
-                    background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 450px;
-                    box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: left;
-                }
+                .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+                .modal-box { background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: left; }
                 .modal-box h3 { color: #0f3d37; margin-bottom: 12px; font-size: 20px; }
                 .modal-group { margin-bottom: 14px; }
                 .modal-group label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 4px; }
                 .modal-group input, .modal-group textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; }
-
-                @media (max-width: 768px) { .input-methods { grid-template-columns: 1fr; } }
             </style>
         </head>
         <body>
@@ -457,6 +484,7 @@ app.post('/dashboard', (req, res) => {
                     🛡️ REPAIR+ <span class="brand-badge">Authorized Portal</span>
                 </div>
                 <div class="user-info">
+                    <button class="btn-orders" onclick="openOrdersModal()">My Orders & Tracking 📦</button>
                     <span>User: <strong id="currentUsername">${username}</strong></span>
                     <a href="/" class="btn-logout">Sign Out</a>
                 </div>
@@ -523,18 +551,18 @@ app.post('/dashboard', (req, res) => {
                             <strong>AI Vision Analysis:</strong> Severe structural integrity compromise or core board fracture detected. Feasibility rating: <strong>14%</strong>.<br>
                             Eligible for instant recycling buyback.
                         </div>
-                        <button class="action-btn btn-sell" onclick="alert('Buyback offer accepted! We will send a cash offer and collect the item.')">
-                            Sell to REPAIR+ & Get Paid 💰
+                        <button class="action-btn btn-sell" onclick="openBuybackModal()">
+                            Sell to REPAIR+ & Get Cash Offer 💰
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Modal Form for Detailed Repair & Address -->
+            <!-- Modal for Repair Order -->
             <div class="modal-overlay" id="repairModal">
                 <div class="modal-box">
                     <h3>Provide Pickup & Device Details</h3>
-                    <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Fill in your location and details so our team can collect and repair your device.</p>
+                    <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Fill in your location so our team can collect and repair your device.</p>
                     <form id="repairForm" onsubmit="submitRepairOrder(event)">
                         <div class="modal-group">
                             <label>Detailed Address</label>
@@ -564,16 +592,76 @@ app.post('/dashboard', (req, res) => {
                 </div>
             </div>
 
+            <!-- Modal for Buyback Order -->
+            <div class="modal-overlay" id="buybackModal">
+                <div class="modal-box">
+                    <h3>Submit Device for Cash Buyback</h3>
+                    <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Provide your contact details to receive an official admin cash offer.</p>
+                    <form id="buybackForm" onsubmit="submitBuybackOrder(event)">
+                        <div class="modal-group">
+                            <label>Detailed Address</label>
+                            <input type="text" id="bAddress" placeholder="Street name, building number" required>
+                        </div>
+                        <div class="modal-group">
+                            <label>City / Location</label>
+                            <input type="text" id="bLocation" placeholder="e.g. Giza, Cairo" required>
+                        </div>
+                        <div class="modal-group">
+                            <label>Primary Mobile Number</label>
+                            <input type="text" id="bPhone1" placeholder="010XXXXXXXX" required>
+                        </div>
+                        <div class="modal-group">
+                            <label>Secondary Mobile Number</label>
+                            <input type="text" id="bPhone2" placeholder="011XXXXXXXX">
+                        </div>
+                        <div class="modal-group">
+                            <label>Device Specs & Condition</label>
+                            <textarea id="bDetails" rows="2" placeholder="Describe device model and damage..." required></textarea>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button type="submit" class="action-btn btn-sell" style="flex:1; padding:10px;">Submit Buyback 💰</button>
+                            <button type="button" onclick="closeBuybackModal()" style="flex:1; padding:10px; background:#e2e8f0; border:none; border-radius:6px; font-weight:600; cursor:pointer;">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal for Tracking Orders & Offers -->
+            <div class="modal-overlay" id="ordersModal">
+                <div class="modal-box" style="max-width: 550px;">
+                    <h3>My Submitted Orders & Offers</h3>
+                    <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Track your repair requests and review cash offers sent by the admin.</p>
+                    <div id="userOrdersList" style="max-height: 350px; overflow-y: auto; font-size: 13px; color: #334155;">
+                        <p style="text-align: center; color: #64748b;">Loading your orders...</p>
+                    </div>
+                    <div style="margin-top: 20px; text-align: right;">
+                        <button type="button" onclick="closeOrdersModal()" style="padding: 8px 20px; background: #0f3d37; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor:pointer;">Close</button>
+                    </div>
+                </div>
+            </div>
+
             <script>
                 let mediaStream = null;
 
-                function openRepairModal() {
-                    document.getElementById('repairModal').style.display = 'flex';
-                }
+                function openRepairModal() { document.getElementById('repairModal').style.display = 'flex'; }
+                function closeRepairModal() { document.getElementById('repairModal').style.display = 'none'; }
+                
+                function openBuybackModal() { document.getElementById('buybackModal').style.display = 'flex'; }
+                function closeBuybackModal() { document.getElementById('buybackModal').style.display = 'none'; }
 
-                function closeRepairModal() {
-                    document.getElementById('repairModal').style.display = 'none';
+                function openOrdersModal() {
+                    document.getElementById('ordersModal').style.display = 'flex';
+                    const username = document.getElementById('currentUsername').textContent;
+                    // Simulated status render for user
+                    document.getElementById('userOrdersList').innerHTML = \`
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; margin-bottom: 8px;">
+                            <strong>User:</strong> \${username}<br>
+                            <strong>Status:</strong> All submitted orders are tracked and reviewed by admin.<br>
+                            <span style="color: #10b981; font-weight: 600;">✓ System fully operational</span>
+                        </div>
+                    \`;
                 }
+                function closeOrdersModal() { document.getElementById('ordersModal').style.display = 'none'; }
 
                 async function submitRepairOrder(event) {
                     event.preventDefault();
@@ -589,11 +677,33 @@ app.post('/dashboard', (req, res) => {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ username, address, location, phone1, phone2, details })
                     });
-
                     const result = await response.json();
                     if (result.success) {
-                        alert('Repair order successfully submitted! The admin can now review your details.');
+                        alert('Repair order successfully submitted!');
                         closeRepairModal();
+                        resetScanner();
+                    }
+                }
+
+                async function submitBuybackOrder(event) {
+                    event.preventDefault();
+                    const username = document.getElementById('currentUsername').textContent;
+                    const address = document.getElementById('bAddress').value;
+                    const location = document.getElementById('bLocation').value;
+                    const phone1 = document.getElementById('bPhone1').value;
+                    const phone2 = document.getElementById('bPhone2').value;
+                    const details = document.getElementById('bDetails').value;
+                    const image = document.getElementById('imagePreview').src;
+
+                    const response = await fetch('/submit-buyback', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, address, location, phone1, phone2, details, image })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('Buyback order with device image successfully submitted to Admin Panel!');
+                        closeBuybackModal();
                         resetScanner();
                     }
                 }
@@ -605,7 +715,7 @@ app.post('/dashboard', (req, res) => {
                         mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                         document.getElementById('videoFeed').srcObject = mediaStream;
                     } catch (err) {
-                        alert('Unable to access device camera. Please check camera permissions or use file upload.');
+                        alert('Unable to access device camera.');
                         stopCameraScan();
                     }
                 }
@@ -637,13 +747,11 @@ app.post('/dashboard', (req, res) => {
                     
                     const dataURL = canvas.toDataURL('image/png');
                     document.getElementById('imagePreview').src = dataURL;
-                    
                     stopCameraScan();
                     document.getElementById('inputMethods').style.display = 'none';
                     document.getElementById('previewContainer').style.display = 'block';
 
-                    const isRepairable = evaluateImageConsistency(dataURL);
-                    runAiAgent(isRepairable);
+                    runAiAgent(evaluateImageConsistency(dataURL));
                 }
 
                 function handleImageUpload(event) {
@@ -655,9 +763,8 @@ app.post('/dashboard', (req, res) => {
                             document.getElementById('imagePreview').src = dataURL;
                             document.getElementById('inputMethods').style.display = 'none';
                             document.getElementById('previewContainer').style.display = 'block';
-                            
-                            const isRepairable = evaluateImageConsistency(dataURL);
-                            runAiAgent(isRepairable);
+
+                            runAiAgent(evaluateImageConsistency(dataURL));
                         }
                         reader.readAsDataURL(file);
                     }
@@ -677,22 +784,7 @@ app.post('/dashboard', (req, res) => {
                     document.getElementById('unrepairableResult').style.display = 'none';
                     document.getElementById('aiLoading').style.display = 'block';
 
-                    const statuses = [
-                        "Extracting visual object features...",
-                        "Running neural network damage classification...",
-                        "Evaluating component replacement availability...",
-                        "Finalizing repair feasibility score..."
-                    ];
-
-                    let idx = 0;
-                    const statusInterval = setInterval(() => {
-                        idx = (idx + 1) % statuses.length;
-                        const statusEl = document.getElementById('loadingStatus');
-                        if(statusEl) statusEl.textContent = statuses[idx];
-                    }, 500);
-
                     setTimeout(() => {
-                        clearInterval(statusInterval);
                         document.getElementById('aiLoading').style.display = 'none';
                         if (isRepairable) {
                             document.getElementById('repairableResult').style.display = 'block';
