@@ -2,11 +2,11 @@ const express = require('express');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 const users = [
-    { username: "admin", email: "admin@repairplus.com", password: "repair123", isAdmin: true }
+    { username: "admin", email: "admin@repairplus.com", password: "repair123", isAdmin: true, isPremium: true }
 ];
 
 const repairOrders = [];
@@ -72,19 +72,19 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="left-content">
                         <h1 class="main-title">AI Camera Scan & Vision Agent</h1>
-                        <p class="sub-title">Advanced diagnostic portal featuring robust admin control and secure user sessions.</p>
+                        <p class="sub-title">Advanced diagnostic portal featuring robust admin control, instant AI grading, and VIP Premium tiers.</p>
                         <div class="features-grid">
                             <div>
                                 <div class="feature-title">Admin Dashboard</div>
                                 <div class="feature-desc">Dedicated panel to review incoming customer repair & buyback orders.</div>
                             </div>
                             <div>
-                                <div class="feature-title">Consistent AI</div>
-                                <div class="feature-desc">Reliable computer vision damage grading.</div>
+                                <div class="feature-title">REPAIR+ Premium</div>
+                                <div class="feature-desc">Ad-free experience, 3x faster AI diagnostics, and 15% repair discounts.</div>
                             </div>
                         </div>
                     </div>
-                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v5.0</div>
+                    <div style="font-size:12px; color:#618781;">REPAIR+ Enterprise • Portal v6.0</div>
                 </div>
 
                 <div class="right-panel">
@@ -170,7 +170,7 @@ app.post('/signup', (req, res) => {
     if (findUser(username) || username === "admin") {
         return res.redirect('/signup?error=1');
     }
-    users.push({ username, email, password, isAdmin: false });
+    users.push({ username, email, password, isAdmin: false, isPremium: false });
     res.redirect('/?success=1');
 });
 
@@ -270,8 +270,17 @@ app.get('/dashboard', (req, res) => {
     res.redirect('/');
 });
 
+app.post('/api/upgrade-premium', (req, res) => {
+    const { username } = req.body;
+    const user = findUser(username);
+    if (user) {
+        user.isPremium = true;
+    }
+    res.json({ success: true });
+});
+
 app.post('/submit-order', (req, res) => {
-    const { username, address, location, phone1, phone2, details } = req.body;
+    const { username, address, location, phone1, phone2, details, isPremium } = req.body;
     repairOrders.push({
         id: repairOrders.length + 1,
         username,
@@ -280,13 +289,15 @@ app.post('/submit-order', (req, res) => {
         phone1,
         phone2,
         details,
+        isPremium: !!isPremium,
+        status: isPremium ? 'VIP Express Submitted (15% Discount Applied)' : 'Submitted & Reviewed',
         date: new Date().toLocaleString()
     });
-    res.send({ success: true });
+    res.json({ success: true });
 });
 
 app.post('/submit-buyback', (req, res) => {
-    const { username, address, location, phone1, phone2, details, image } = req.body;
+    const { username, address, location, phone1, phone2, details, image, isPremium } = req.body;
     buybackOrders.push({
         id: buybackOrders.length + 1,
         username,
@@ -296,11 +307,12 @@ app.post('/submit-buyback', (req, res) => {
         phone2,
         details,
         image: image || '',
+        isPremium: !!isPremium,
         adminOffer: '',
-        status: 'Pending Admin Offer',
+        status: isPremium ? 'VIP Priority - Pending Admin Offer' : 'Pending Admin Price Offer',
         date: new Date().toLocaleString()
     });
-    res.send({ success: true });
+    res.json({ success: true });
 });
 
 app.post('/admin/set-offer', (req, res) => {
@@ -308,9 +320,31 @@ app.post('/admin/set-offer', (req, res) => {
     const ord = buybackOrders.find(o => o.id == orderId);
     if (ord) {
         ord.adminOffer = offerPrice;
-        ord.status = 'Offer Ready (' + offerPrice + ' EGP)';
+        ord.status = 'Offer Sent: ' + offerPrice;
     }
-    res.redirect('/dashboard-admin-refresh');
+    res.send(`
+        <form id="reAuth" action="/dashboard" method="POST">
+            <input type="hidden" name="username" value="admin">
+            <input type="hidden" name="password" value="repair123">
+        </form>
+        <script>document.getElementById('reAuth').submit();</script>
+    `);
+});
+
+app.post('/api/respond-offer', (req, res) => {
+    const { orderId, decision } = req.body;
+    const ord = buybackOrders.find(o => o.id == orderId);
+    if (ord) {
+        ord.status = decision === 'accept' ? 'Accepted by User (' + ord.adminOffer + ')' : 'Declined by User';
+    }
+    res.json({ success: true });
+});
+
+app.get('/api/my-orders', (req, res) => {
+    const username = req.query.username;
+    const userRepairs = repairOrders.filter(o => o.username === username);
+    const userBuybacks = buybackOrders.filter(o => o.username === username);
+    res.json({ repairs: userRepairs, buybacks: userBuybacks });
 });
 
 app.post('/dashboard', (req, res) => {
@@ -326,35 +360,38 @@ app.post('/dashboard', (req, res) => {
     if (isAdminUser || (user && user.isAdmin)) {
         let ordersHtml = repairOrders.length === 0 ? '<p style="color: #64748b; text-align: center; padding: 15px;">No repair orders received yet.</p>' : '';
         repairOrders.slice().reverse().forEach(ord => {
+            const vipTag = ord.isPremium ? '<span style="background:#f59e0b; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:6px;">⭐ VIP PREMIUM</span>' : '';
             ordersHtml += `
                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; font-weight: 700; color: #0f3d37; margin-bottom: 6px;">
-                        <span>Repair Order #${ord.id} - User: ${ord.username}</span>
+                        <span>Repair Order #${ord.id} - User: ${ord.username} ${vipTag}</span>
                         <span style="font-size: 12px; color: #64748b;">${ord.date}</span>
                     </div>
                     <p style="font-size: 13px; color: #334155; margin-bottom: 4px;"><strong>Address:</strong> ${ord.address} (${ord.location})</p>
                     <p style="font-size: 13px; color: #334155; margin-bottom: 4px;"><strong>Phones:</strong> Primary: ${ord.phone1} | Secondary: ${ord.phone2 || 'N/A'}</p>
-                    <p style="font-size: 13px; color: #334155;"><strong>Device Details:</strong> ${ord.details}</p>
+                    <p style="font-size: 13px; color: #334155; margin-bottom: 4px;"><strong>Device Details:</strong> ${ord.details}</p>
+                    <p style="font-size: 12px; font-weight: 600; color: #047857;">Status: ${ord.status}</p>
                 </div>
             `;
         });
 
         let buybackHtml = buybackOrders.length === 0 ? '<p style="color: #64748b; text-align: center; padding: 15px;">No buyback orders received yet.</p>' : '';
         buybackOrders.slice().reverse().forEach(ord => {
+            const vipTag = ord.isPremium ? '<span style="background:#f59e0b; color:#fff; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:6px;">⭐ VIP PRIORITY</span>' : '';
             buybackHtml += `
                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px; display: flex; gap: 16px; align-items: center;">
-                    ${ord.image ? `<img src="${ord.image}" style="width: 90px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1;">` : ''}
+                    ${ord.image ? `<img src="${ord.image}" style="width: 100px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1;">` : ''}
                     <div style="flex: 1;">
                         <div style="display: flex; justify-content: space-between; font-weight: 700; color: #f97316; margin-bottom: 6px;">
-                            <span>Buyback Order #${ord.id} - User: ${ord.username}</span>
+                            <span>Buyback Order #${ord.id} - User: ${ord.username} ${vipTag}</span>
                             <span style="font-size: 12px; color: #64748b;">${ord.date}</span>
                         </div>
-                        <p style="font-size: 13px; color: #334155; margin-bottom: 4px;"><strong>Address:</strong> ${ord.address} (${ord.location}) | <strong>Phone:</strong> ${ord.phone1}</p>
+                        <p style="font-size: 13px; color: #334155; margin-bottom: 4px;"><strong>Address:</strong> ${ord.address} (${ord.location}) | <strong>Phones:</strong> ${ord.phone1} / ${ord.phone2 || 'N/A'}</p>
                         <p style="font-size: 13px; color: #334155; margin-bottom: 8px;"><strong>Details:</strong> ${ord.details}</p>
-                        <form action="/admin/set-offer" method="POST" style="display: flex; gap: 8px; align-items: center;">
+                        <form action="/admin/set-offer" method="POST" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                             <input type="hidden" name="orderId" value="${ord.id}">
-                            <input type="text" name="offerPrice" placeholder="Enter offer price (e.g. 1500 EGP)" value="${ord.adminOffer}" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 220px;" required>
-                            <button type="submit" style="padding: 6px 14px; background: #0f3d37; color: #fff; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;">Save & Send Offer</button>
+                            <input type="text" name="offerPrice" placeholder="Enter price (e.g. 1500 EGP)" value="${ord.adminOffer}" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 200px;" required>
+                            <button type="submit" style="padding: 6px 14px; background: #0f3d37; color: #fff; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;">Send Price Offer</button>
                             <span style="font-size: 12px; font-weight: 600; color: #047857; margin-left: 8px;">Status: ${ord.status}</span>
                         </form>
                     </div>
@@ -410,6 +447,8 @@ app.post('/dashboard', (req, res) => {
         `);
     }
 
+    const isUserPremium = user ? !!user.isPremium : false;
+
     res.send(`
         <!DOCTYPE html>
         <html lang="en">
@@ -429,11 +468,21 @@ app.post('/dashboard', (req, res) => {
                 }
                 .navbar-brand { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
                 .brand-badge { background: #80e2d0; color: #0f3d37; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
-                .user-info { display: flex; align-items: center; gap: 16px; font-size: 14px; }
+                .vip-badge { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; }
+                .user-info { display: flex; align-items: center; gap: 12px; font-size: 14px; }
                 .btn-logout { background: #ef4444; color: #fff; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; }
-                .btn-orders { background: #3b82f6; color: #fff; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; margin-right: 10px; cursor: pointer; border: none; }
+                .btn-orders { background: #3b82f6; color: #fff; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+                .btn-premium { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4); }
 
-                .main-container { max-width: 900px; margin: 40px auto; padding: 0 20px; width: 100%; }
+                .ad-banner {
+                    background: linear-gradient(90deg, #1e293b, #334155); color: #f8fafc;
+                    padding: 12px 20px; border-radius: 8px; margin-bottom: 20px;
+                    display: flex; justify-content: space-between; align-items: center;
+                    border: 1px solid #475569; font-size: 13px;
+                }
+                .ad-tag { background: #64748b; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-right: 8px; text-transform: uppercase; }
+
+                .main-container { max-width: 900px; margin: 30px auto; padding: 0 20px; width: 100%; }
                 .dashboard-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
                 .section-header { text-align: center; margin-bottom: 24px; }
                 .section-header h2 { font-size: 24px; color: #0f3d37; margin-bottom: 8px; }
@@ -476,25 +525,40 @@ app.post('/dashboard', (req, res) => {
                 .modal-group { margin-bottom: 14px; }
                 .modal-group label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 4px; }
                 .modal-group input, .modal-group textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; }
+                
+                .perk-list { list-style: none; margin: 16px 0; padding: 0; }
+                .perk-list li { font-size: 13px; color: #334155; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
             </style>
         </head>
         <body>
             <nav class="navbar">
                 <div class="navbar-brand">
-                    🛡️ REPAIR+ <span class="brand-badge">Authorized Portal</span>
+                    🛡️ REPAIR+ 
+                    <span class="brand-badge" id="portalBadge" style="${isUserPremium ? 'display:none;' : ''}">Standard Portal</span>
+                    <span class="vip-badge" id="vipBadge" style="${isUserPremium ? '' : 'display:none;'}">⭐ VIP PREMIUM</span>
                 </div>
                 <div class="user-info">
-                    <button class="btn-orders" onclick="openOrdersModal()">My Orders & Tracking 📦</button>
+                    <button type="button" id="btnUpgradeNav" class="btn-premium" onclick="openPremiumModal()" style="${isUserPremium ? 'display:none;' : ''}">⭐ Go Premium</button>
+                    <button type="button" class="btn-orders" onclick="openOrdersModal()">Track Orders 📦</button>
                     <span>User: <strong id="currentUsername">${username}</strong></span>
                     <a href="/" class="btn-logout">Sign Out</a>
                 </div>
             </nav>
 
             <div class="main-container">
+                <!-- Sponsored Ad Banner (Hidden automatically for Premium Users) -->
+                <div class="ad-banner" id="adBanner" style="${isUserPremium ? 'display:none;' : ''}">
+                    <div>
+                        <span class="ad-tag">Sponsored</span>
+                        <span>Tired of waiting in queue & seeing ads? Upgrade to <strong>REPAIR+ Premium</strong> for 3x faster AI scans!</span>
+                    </div>
+                    <button type="button" onclick="openPremiumModal()" style="background: #f59e0b; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer;">Remove Ads</button>
+                </div>
+
                 <div class="dashboard-card">
                     <div class="section-header">
                         <h2>AI Camera Scan & Object Repairability</h2>
-                        <p>Select an input method below for immediate AI structural analysis.</p>
+                        <p id="scanSubtitle">${isUserPremium ? '⚡ VIP Turbo AI Engine Active: Instant Priority Analysis Enabled.' : 'Select an input method below for immediate AI structural analysis.'}</p>
                     </div>
 
                     <div class="input-methods" id="inputMethods">
@@ -515,8 +579,8 @@ app.post('/dashboard', (req, res) => {
                     <div class="camera-container" id="cameraContainer">
                         <video id="videoFeed" autoplay playsinline></video>
                         <div class="capture-bar">
-                            <button onclick="captureCameraSnapshot()" class="action-btn btn-repair" style="padding: 8px 20px; font-size:13px;">Capture Photo 📸</button>
-                            <button onclick="stopCameraScan()" style="padding: 8px 20px; font-size:13px; background:#64748b; color:#fff; border:none; border-radius:6px; cursor:pointer;">Cancel</button>
+                            <button type="button" onclick="captureCameraSnapshot()" class="action-btn btn-repair" style="padding: 8px 20px; font-size:13px;">Capture Photo 📸</button>
+                            <button type="button" onclick="stopCameraScan()" style="padding: 8px 20px; font-size:13px; background:#64748b; color:#fff; border:none; border-radius:6px; cursor:pointer;">Cancel</button>
                         </div>
                     </div>
                     <canvas id="snapshotCanvas" style="display:none;"></canvas>
@@ -524,13 +588,13 @@ app.post('/dashboard', (req, res) => {
                     <div class="preview-container" id="previewContainer">
                         <img id="imagePreview" class="preview-img" src="" alt="Captured Item">
                         <div>
-                            <button onclick="resetScanner()" style="font-size:12px; padding:6px 12px; cursor:pointer; background:#e2e8f0; border:none; border-radius:6px; font-weight:600;">Scan Another Item</button>
+                            <button type="button" onclick="resetScanner()" style="font-size:12px; padding:6px 12px; cursor:pointer; background:#e2e8f0; border:none; border-radius:6px; font-weight:600;">Scan Another Item</button>
                         </div>
                     </div>
 
                     <div class="ai-loading" id="aiLoading">
                         <div class="spinner"></div>
-                        <h3 style="color: #0f3d37;">AI Vision Agent Scanning Object...</h3>
+                        <h3 style="color: #0f3d37;" id="loadingTitle">AI Vision Agent Scanning Object...</h3>
                         <p style="color: #64748b; font-size: 13px; margin-top: 4px;" id="loadingStatus">Analyzing structural fractures and calculating repair score...</p>
                     </div>
 
@@ -538,9 +602,9 @@ app.post('/dashboard', (req, res) => {
                         <div class="result-title">✅ Object is Repairable!</div>
                         <div class="result-desc">
                             <strong>AI Vision Analysis:</strong> Minor surface wear detected. Feasibility rating: <strong>88%</strong>.<br>
-                            Standard component servicing available.
+                            <span id="repairDiscountNote">${isUserPremium ? '⭐ <strong>VIP Benefit:</strong> 15% Discount & Express Pickup automatically applied!' : 'Standard component servicing available.'}</span>
                         </div>
-                        <button class="action-btn btn-repair" onclick="openRepairModal()">
+                        <button type="button" class="action-btn btn-repair" onclick="openRepairModal()">
                             Request Pickup & Repair 🚚
                         </button>
                     </div>
@@ -549,11 +613,40 @@ app.post('/dashboard', (req, res) => {
                         <div class="result-title">⚠️ Object is Unrepairable</div>
                         <div class="result-desc">
                             <strong>AI Vision Analysis:</strong> Severe structural integrity compromise or core board fracture detected. Feasibility rating: <strong>14%</strong>.<br>
-                            Eligible for instant recycling buyback.
+                            <span id="buybackVipNote">${isUserPremium ? '⭐ <strong>VIP Benefit:</strong> Priority Admin Valuation & +10% Bonus Cash Offer!' : 'Eligible for instant recycling buyback.'}</span>
                         </div>
-                        <button class="action-btn btn-sell" onclick="openBuybackModal()">
+                        <button type="button" class="action-btn btn-sell" onclick="openBuybackModal()">
                             Sell to REPAIR+ & Get Cash Offer 💰
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal for Premium Upgrade -->
+            <div class="modal-overlay" id="premiumModal">
+                <div class="modal-box">
+                    <div style="text-align: center;">
+                        <span style="background: #fef3c7; color: #d97706; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;">REPAIR+ VIP MEMBERSHIP</span>
+                        <h3 style="color: #0f3d37; margin-top: 10px; font-size: 22px;">Upgrade to Premium</h3>
+                        <p style="font-size: 13px; color: #64748b;">Unlock the fastest AI diagnostics and exclusive repair savings.</p>
+                    </div>
+                    
+                    <ul class="perk-list">
+                        <li>🚫 <strong>100% Ad-Free Experience:</strong> Remove all sponsored banners permanently.</li>
+                        <li>⚡ <strong>3x Faster Turbo AI Scans:</strong> Skip the standard processing queue (0.4s scan speed).</li>
+                        <li>💸 <strong>15% Off All Repairs:</strong> Instant discount on parts and doorstep service.</li>
+                        <li>💰 <strong>+10% Buyback Cash Bonus:</strong> Higher cash payouts on unrepairable devices.</li>
+                        <li>🚚 <strong>Priority Express Pickup:</strong> Same-day courier dispatch.</li>
+                    </ul>
+
+                    <div style="background: #f0fdf4; border: 1px solid #10b981; padding: 14px; border-radius: 8px; text-align: center; margin-bottom: 18px;">
+                        <div style="font-size: 22px; font-weight: 700; color: #065f46;">99 EGP <span style="font-size: 13px; font-weight: 400;">/ month</span></div>
+                        <div style="font-size: 11px; color: #047857; margin-top: 2px;">Instant activation • Cancel anytime</div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" id="btnConfirmPremium" onclick="activatePremium()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer;">Activate VIP Now ⭐</button>
+                        <button type="button" onclick="closePremiumModal()" style="padding: 12px 16px; background: #e2e8f0; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px;">Close</button>
                     </div>
                 </div>
             </div>
@@ -563,32 +656,30 @@ app.post('/dashboard', (req, res) => {
                 <div class="modal-box">
                     <h3>Provide Pickup & Device Details</h3>
                     <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Fill in your location so our team can collect and repair your device.</p>
-                    <form id="repairForm" onsubmit="submitRepairOrder(event)">
-                        <div class="modal-group">
-                            <label>Detailed Address</label>
-                            <input type="text" id="rAddress" placeholder="Street name, building number, apartment" required>
-                        </div>
-                        <div class="modal-group">
-                            <label>City / Location / Area</label>
-                            <input type="text" id="rLocation" placeholder="e.g. Cairo, Giza, Nasr City" required>
-                        </div>
-                        <div class="modal-group">
-                            <label>Primary Mobile Number</label>
-                            <input type="text" id="rPhone1" placeholder="010XXXXXXXX" required>
-                        </div>
-                        <div class="modal-group">
-                            <label>Secondary Mobile Number</label>
-                            <input type="text" id="rPhone2" placeholder="011XXXXXXXX">
-                        </div>
-                        <div class="modal-group">
-                            <label>Device Details & Issue Summary</label>
-                            <textarea id="rDetails" rows="3" placeholder="Describe the device model and problem..." required></textarea>
-                        </div>
-                        <div style="display: flex; gap: 10px; margin-top: 20px;">
-                            <button type="submit" class="action-btn btn-repair" style="flex:1; padding:10px;">Submit Order 🚀</button>
-                            <button type="button" onclick="closeRepairModal()" style="flex:1; padding:10px; background:#e2e8f0; border:none; border-radius:6px; font-weight:600; cursor:pointer;">Cancel</button>
-                        </div>
-                    </form>
+                    <div class="modal-group">
+                        <label>Detailed Address</label>
+                        <input type="text" id="rAddress" placeholder="Street name, building number, apartment">
+                    </div>
+                    <div class="modal-group">
+                        <label>City / Location / Area</label>
+                        <input type="text" id="rLocation" placeholder="e.g. Cairo, Giza, Nasr City">
+                    </div>
+                    <div class="modal-group">
+                        <label>Primary Mobile Number</label>
+                        <input type="text" id="rPhone1" placeholder="010XXXXXXXX">
+                    </div>
+                    <div class="modal-group">
+                        <label>Secondary Mobile Number</label>
+                        <input type="text" id="rPhone2" placeholder="011XXXXXXXX">
+                    </div>
+                    <div class="modal-group">
+                        <label>Device Details & Issue Summary</label>
+                        <textarea id="rDetails" rows="3" placeholder="Describe the device model and problem..."></textarea>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="button" id="btnSubmitRepair" onclick="submitRepairOrder()" class="action-btn btn-repair" style="flex:1; padding:10px;">Submit Order 🚀</button>
+                        <button type="button" onclick="closeRepairModal()" style="flex:1; padding:10px; background:#e2e8f0; border:none; border-radius:6px; font-weight:600; cursor:pointer;">Cancel</button>
+                    </div>
                 </div>
             </div>
 
@@ -597,40 +688,38 @@ app.post('/dashboard', (req, res) => {
                 <div class="modal-box">
                     <h3>Submit Device for Cash Buyback</h3>
                     <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Provide your contact details to receive an official admin cash offer.</p>
-                    <form id="buybackForm" onsubmit="submitBuybackOrder(event)">
-                        <div class="modal-group">
-                            <label>Detailed Address</label>
-                            <input type="text" id="bAddress" placeholder="Street name, building number" required>
-                        </div>
-                        <div class="modal-group">
-                            <label>City / Location</label>
-                            <input type="text" id="bLocation" placeholder="e.g. Giza, Cairo" required>
-                        </div>
-                        <div class="modal-group">
-                            <label>Primary Mobile Number</label>
-                            <input type="text" id="bPhone1" placeholder="010XXXXXXXX" required>
-                        </div>
-                        <div class="modal-group">
-                            <label>Secondary Mobile Number</label>
-                            <input type="text" id="bPhone2" placeholder="011XXXXXXXX">
-                        </div>
-                        <div class="modal-group">
-                            <label>Device Specs & Condition</label>
-                            <textarea id="bDetails" rows="2" placeholder="Describe device model and damage..." required></textarea>
-                        </div>
-                        <div style="display: flex; gap: 10px; margin-top: 20px;">
-                            <button type="submit" class="action-btn btn-sell" style="flex:1; padding:10px;">Submit Buyback 💰</button>
-                            <button type="button" onclick="closeBuybackModal()" style="flex:1; padding:10px; background:#e2e8f0; border:none; border-radius:6px; font-weight:600; cursor:pointer;">Cancel</button>
-                        </div>
-                    </form>
+                    <div class="modal-group">
+                        <label>Detailed Address</label>
+                        <input type="text" id="bAddress" placeholder="Street name, building number">
+                    </div>
+                    <div class="modal-group">
+                        <label>City / Location</label>
+                        <input type="text" id="bLocation" placeholder="e.g. Giza, Cairo">
+                    </div>
+                    <div class="modal-group">
+                        <label>Primary Mobile Number</label>
+                        <input type="text" id="bPhone1" placeholder="010XXXXXXXX">
+                    </div>
+                    <div class="modal-group">
+                        <label>Secondary Mobile Number</label>
+                        <input type="text" id="bPhone2" placeholder="011XXXXXXXX">
+                    </div>
+                    <div class="modal-group">
+                        <label>Device Specs & Condition</label>
+                        <textarea id="bDetails" rows="2" placeholder="Describe device model and damage..."></textarea>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button type="button" id="btnSubmitBuyback" onclick="submitBuybackOrder()" class="action-btn btn-sell" style="flex:1; padding:10px;">Submit Buyback 💰</button>
+                        <button type="button" onclick="closeBuybackModal()" style="flex:1; padding:10px; background:#e2e8f0; border:none; border-radius:6px; font-weight:600; cursor:pointer;">Cancel</button>
+                    </div>
                 </div>
             </div>
 
             <!-- Modal for Tracking Orders & Offers -->
             <div class="modal-overlay" id="ordersModal">
-                <div class="modal-box" style="max-width: 550px;">
+                <div class="modal-box" style="max-width: 600px;">
                     <h3>My Submitted Orders & Offers</h3>
-                    <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Track your repair requests and review cash offers sent by the admin.</p>
+                    <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Track your repair requests and respond to cash offers sent by the admin.</p>
                     <div id="userOrdersList" style="max-height: 350px; overflow-y: auto; font-size: 13px; color: #334155;">
                         <p style="text-align: center; color: #64748b;">Loading your orders...</p>
                     </div>
@@ -642,6 +731,43 @@ app.post('/dashboard', (req, res) => {
 
             <script>
                 let mediaStream = null;
+                let isPremiumUser = ${isUserPremium};
+
+                function openPremiumModal() { document.getElementById('premiumModal').style.display = 'flex'; }
+                function closePremiumModal() { document.getElementById('premiumModal').style.display = 'none'; }
+
+                async function activatePremium() {
+                    const btn = document.getElementById('btnConfirmPremium');
+                    const username = document.getElementById('currentUsername').textContent;
+                    btn.disabled = true;
+                    btn.textContent = 'Activating VIP...';
+
+                    try {
+                        const res = await fetch('/api/upgrade-premium', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            isPremiumUser = true;
+                            document.getElementById('adBanner').style.display = 'none';
+                            document.getElementById('btnUpgradeNav').style.display = 'none';
+                            document.getElementById('portalBadge').style.display = 'none';
+                            document.getElementById('vipBadge').style.display = 'inline-block';
+                            document.getElementById('scanSubtitle').textContent = '⚡ VIP Turbo AI Engine Active: Instant Priority Analysis Enabled.';
+                            document.getElementById('repairDiscountNote').innerHTML = '⭐ <strong>VIP Benefit:</strong> 15% Discount & Express Pickup automatically applied!';
+                            document.getElementById('buybackVipNote').innerHTML = '⭐ <strong>VIP Benefit:</strong> Priority Admin Valuation & +10% Bonus Cash Offer!';
+                            alert('🎉 Congratulations! REPAIR+ VIP Premium is now active. Ads removed & Turbo AI enabled!');
+                            closePremiumModal();
+                        }
+                    } catch (e) {
+                        alert('Error activating Premium.');
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = 'Activate VIP Now ⭐';
+                    }
+                }
 
                 function openRepairModal() { document.getElementById('repairModal').style.display = 'flex'; }
                 function closeRepairModal() { document.getElementById('repairModal').style.display = 'none'; }
@@ -649,62 +775,128 @@ app.post('/dashboard', (req, res) => {
                 function openBuybackModal() { document.getElementById('buybackModal').style.display = 'flex'; }
                 function closeBuybackModal() { document.getElementById('buybackModal').style.display = 'none'; }
 
-                function openOrdersModal() {
+                async function respondToOffer(orderId, decision) {
+                    await fetch('/api/respond-offer', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId, decision })
+                    });
+                    openOrdersModal();
+                }
+
+                async function openOrdersModal() {
                     document.getElementById('ordersModal').style.display = 'flex';
                     const username = document.getElementById('currentUsername').textContent;
-                    // Simulated status render for user
-                    document.getElementById('userOrdersList').innerHTML = \`
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; margin-bottom: 8px;">
-                            <strong>User:</strong> \${username}<br>
-                            <strong>Status:</strong> All submitted orders are tracked and reviewed by admin.<br>
-                            <span style="color: #10b981; font-weight: 600;">✓ System fully operational</span>
-                        </div>
-                    \`;
+                    const res = await fetch('/api/my-orders?username=' + encodeURIComponent(username));
+                    const data = await res.json();
+                    
+                    let html = '';
+                    if (data.repairs.length === 0 && data.buybacks.length === 0) {
+                        html = '<p style="text-align: center; color: #64748b; padding: 20px;">No orders submitted yet.</p>';
+                    } else {
+                        data.repairs.forEach(function(r) {
+                            html += '<div style="background: #ecfdf5; border: 1px solid #10b981; padding: 12px; border-radius: 6px; margin-bottom: 10px;">' +
+                                '<strong style="color: #065f46;">Repair Order #' + r.id + '</strong><br>' +
+                                '<span>Address: ' + r.address + ' (' + r.location + ')</span><br>' +
+                                '<span>Details: ' + r.details + '</span><br>' +
+                                '<span style="color: #047857; font-weight: 600;">Status: ' + r.status + '</span>' +
+                            '</div>';
+                        });
+                        data.buybacks.forEach(function(b) {
+                            let actionButtons = '';
+                            if (b.adminOffer && b.status.indexOf('Offer Sent') !== -1) {
+                                actionButtons = '<div style="margin-top:8px; display:flex; gap:8px;">' +
+                                    '<button type="button" onclick="respondToOffer(' + b.id + ', \\'accept\\')" style="padding:5px 12px; background:#10b981; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Accept Offer ✓</button>' +
+                                    '<button type="button" onclick="respondToOffer(' + b.id + ', \\'decline\\')" style="padding:5px 12px; background:#ef4444; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Decline ✕</button>' +
+                                '</div>';
+                            }
+                            html += '<div style="background: #fff7ed; border: 1px solid #f97316; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; gap: 12px; align-items: center;">' +
+                                (b.image ? '<img src="' + b.image + '" style="width: 70px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1;">' : '') +
+                                '<div style="flex:1;">' +
+                                    '<strong style="color: #9a3412;">Buyback Order #' + b.id + '</strong><br>' +
+                                    '<span>Details: ' + b.details + '</span><br>' +
+                                    '<span style="color: #ea580c; font-weight: 600;">Status / Offer: ' + (b.adminOffer ? b.adminOffer + ' (' + b.status + ')' : 'Pending Admin Offer...') + '</span>' +
+                                    actionButtons +
+                                '</div>' +
+                            '</div>';
+                        });
+                    }
+                    document.getElementById('userOrdersList').innerHTML = html;
                 }
                 function closeOrdersModal() { document.getElementById('ordersModal').style.display = 'none'; }
 
-                async function submitRepairOrder(event) {
-                    event.preventDefault();
+                async function submitRepairOrder() {
+                    const btn = document.getElementById('btnSubmitRepair');
                     const username = document.getElementById('currentUsername').textContent;
-                    const address = document.getElementById('rAddress').value;
-                    const location = document.getElementById('rLocation').value;
-                    const phone1 = document.getElementById('rPhone1').value;
-                    const phone2 = document.getElementById('rPhone2').value;
-                    const details = document.getElementById('rDetails').value;
+                    const address = document.getElementById('rAddress').value.trim();
+                    const location = document.getElementById('rLocation').value.trim();
+                    const phone1 = document.getElementById('rPhone1').value.trim();
+                    const phone2 = document.getElementById('rPhone2').value.trim();
+                    const details = document.getElementById('rDetails').value.trim();
 
-                    const response = await fetch('/submit-order', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username, address, location, phone1, phone2, details })
-                    });
-                    const result = await response.json();
-                    if (result.success) {
-                        alert('Repair order successfully submitted!');
-                        closeRepairModal();
-                        resetScanner();
+                    if (!address || !location || !phone1 || !details) {
+                        alert('Please fill in all required fields.');
+                        return;
+                    }
+
+                    btn.disabled = true;
+                    btn.textContent = 'Submitting...';
+
+                    try {
+                        const response = await fetch('/submit-order', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, address, location, phone1, phone2, details, isPremium: isPremiumUser })
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            alert('Repair order successfully submitted!');
+                            closeRepairModal();
+                            resetScanner();
+                        }
+                    } catch (err) {
+                        alert('Error submitting order. Please try again.');
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = 'Submit Order 🚀';
                     }
                 }
 
-                async function submitBuybackOrder(event) {
-                    event.preventDefault();
+                async function submitBuybackOrder() {
+                    const btn = document.getElementById('btnSubmitBuyback');
                     const username = document.getElementById('currentUsername').textContent;
-                    const address = document.getElementById('bAddress').value;
-                    const location = document.getElementById('bLocation').value;
-                    const phone1 = document.getElementById('bPhone1').value;
-                    const phone2 = document.getElementById('bPhone2').value;
-                    const details = document.getElementById('bDetails').value;
+                    const address = document.getElementById('bAddress').value.trim();
+                    const location = document.getElementById('bLocation').value.trim();
+                    const phone1 = document.getElementById('bPhone1').value.trim();
+                    const phone2 = document.getElementById('bPhone2').value.trim();
+                    const details = document.getElementById('bDetails').value.trim();
                     const image = document.getElementById('imagePreview').src;
 
-                    const response = await fetch('/submit-buyback', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username, address, location, phone1, phone2, details, image })
-                    });
-                    const result = await response.json();
-                    if (result.success) {
-                        alert('Buyback order with device image successfully submitted to Admin Panel!');
-                        closeBuybackModal();
-                        resetScanner();
+                    if (!address || !location || !phone1 || !details) {
+                        alert('Please fill in all required fields.');
+                        return;
+                    }
+
+                    btn.disabled = true;
+                    btn.textContent = 'Submitting...';
+
+                    try {
+                        const response = await fetch('/submit-buyback', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, address, location, phone1, phone2, details, image, isPremium: isPremiumUser })
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            alert('Buyback order with device image successfully submitted to Admin Panel!');
+                            closeBuybackModal();
+                            resetScanner();
+                        }
+                    } catch (err) {
+                        alert('Error submitting buyback. Please try again.');
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = 'Submit Buyback 💰';
                     }
                 }
 
@@ -784,6 +976,11 @@ app.post('/dashboard', (req, res) => {
                     document.getElementById('unrepairableResult').style.display = 'none';
                     document.getElementById('aiLoading').style.display = 'block';
 
+                    // Turbo AI speed for Premium users (400ms vs 2200ms)
+                    const scanDuration = isPremiumUser ? 400 : 2200;
+                    document.getElementById('loadingTitle').textContent = isPremiumUser ? '⚡ VIP Turbo AI Scanning...' : 'AI Vision Agent Scanning Object...';
+                    document.getElementById('loadingStatus').textContent = isPremiumUser ? 'Priority GPU processing active...' : 'Standard queue: Analyzing structural fractures...';
+
                     setTimeout(() => {
                         document.getElementById('aiLoading').style.display = 'none';
                         if (isRepairable) {
@@ -791,7 +988,7 @@ app.post('/dashboard', (req, res) => {
                         } else {
                             document.getElementById('unrepairableResult').style.display = 'block';
                         }
-                    }, 1800);
+                    }, scanDuration);
                 }
             </script>
         </body>
